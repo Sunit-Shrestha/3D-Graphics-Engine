@@ -1,0 +1,9 @@
+# Simple triangle OBJ file
+# 3 vertices forming a triangle
+
+v  0.0  1.0  0.0
+v -1.0 -1.0  0.0
+v  1.0 -1.0  0.0
+
+# Face
+f 1 2 3

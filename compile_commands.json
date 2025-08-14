@@ -1,0 +1,42 @@
+[
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/Camera.cpp -o build/Camera.o",
+    "file": "src/Camera.cpp"
+  },
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/main.cpp -o build/main.o",
+    "file": "src/main.cpp"
+  },
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/Matrix4.cpp -o build/Matrix4.o",
+    "file": "src/Matrix4.cpp"
+  },
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/Mesh.cpp -o build/Mesh.o",
+    "file": "src/Mesh.cpp"
+  },
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/Renderer.cpp -o build/Renderer.o",
+    "file": "src/Renderer.cpp"
+  },
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/Triangle.cpp -o build/Triangle.o",
+    "file": "src/Triangle.cpp"
+  },
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/Vector3.cpp -o build/Vector3.o",
+    "file": "src/Vector3.cpp"
+  },
+  {
+    "directory": "/home/sunit/Documents/Code/sfml_renderer",
+    "command": "g++ -std=c++17 -Wall -Wextra -Iinclude -c src/Vertex.cpp -o build/Vertex.o",
+    "file": "src/Vertex.cpp"
+  }
+]
