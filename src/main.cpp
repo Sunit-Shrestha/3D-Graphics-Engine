@@ -165,11 +165,11 @@ int main() {
           cout << "Cube rotate right - Y: " << rotationY << endl;
         }
         // J/K keys for cube rotation around X-axis
-        else if (keyPressed->scancode == sf::Keyboard::Scancode::K) {
+        else if (keyPressed->scancode == sf::Keyboard::Scancode::J) {
           rotationX += rotationSpeed; // Rotate down around X-axis
           cout << "Cube rotate down - X: " << rotationX << endl;
         }
-        else if (keyPressed->scancode == sf::Keyboard::Scancode::J) {
+        else if (keyPressed->scancode == sf::Keyboard::Scancode::K) {
           rotationX -= rotationSpeed; // Rotate up around X-axis
           cout << "Cube rotate up - X: " << rotationX << endl;
         }
