@@ -3,13 +3,7 @@
 #include "Mesh.hpp"
 #include "Camera.hpp"
 #include "Vector3.hpp"
-
-// Simple RGB color structure (no SFML dependency)
-struct Color {
-    unsigned char r, g, b;
-    Color(unsigned char red = 255, unsigned char green = 255, unsigned char blue = 255) 
-        : r(red), g(green), b(blue) {}
-};
+#include "Color.hpp"
 
 // Forward declaration for minimal SFML usage
 namespace sf {

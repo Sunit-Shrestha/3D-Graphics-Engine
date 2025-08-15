@@ -26,13 +26,13 @@ Matrix4 Camera::getViewMatrix() const {
     // Calculate camera basis vectors using the "look-at" method
     
     // Forward vector: direction from camera to target (normalized)
-    Vector3 forward = (target - position).normalize();
+    Vector3 forward = (target - position).normalized();
     
     // Right vector: cross product of forward and up (normalized)
-    Vector3 right = forward.cross(up).normalize();
+    Vector3 right = forward.cross(up).normalized();
     
     // Recalculate up vector to ensure orthogonality
-    Vector3 realUp = right.cross(forward).normalize();
+    Vector3 realUp = right.cross(forward).normalized();
     
     // Negate forward for right-handed coordinate system
     // (camera looks down the negative Z-axis)

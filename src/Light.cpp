@@ -1,56 +1,33 @@
 #include "Light.hpp"
+#include <algorithm>
+#include <cmath>
 
-Light::Light() 
-    : type(Type::DIRECTIONAL)
-    , position(0.0f, 0.0f, 0.0f)
-    , direction(0.0f, -1.0f, 0.0f)
-    , color(1.0f, 1.0f, 1.0f)
-    , intensity(1.0f)
-    , constantAttenuation(1.0f)
-    , linearAttenuation(0.0f)
-    , quadraticAttenuation(0.0f)
+Light::Light() = default;
+
+Light::Light(const Vector3& pos, const Vector3& dir,
+             const Color& amb, const Color& diff, const Color& spec)
+    : position(pos), direction(dir), ambient(amb), diffuse(diff), specular(spec) {}
+
+Color Light::computeColor(const Vector3& normal,
+                          const Vector3& viewDir,
+                          const Material& material) const
 {
-}
+    // Normalize vectors
+    Vector3 N = normal.normalized();
+    Vector3 L = direction.normalized(); // assuming directional light
+    Vector3 V = viewDir.normalized();
+    Vector3 R = (N * 2.0f * N.dot(L) - L).normalized();
 
-Light::Light(Type lightType, const Vector3& pos, const Vector3& dir, const Vector3& col, float intens)
-    : type(lightType)
-    , position(pos)
-    , direction(dir)
-    , color(col)
-    , intensity(intens)
-    , constantAttenuation(1.0f)
-    , linearAttenuation(0.09f)
-    , quadraticAttenuation(0.032f)
-{
-}
+    // Ambient
+    Color ambientC = ambient * material.kAmbient;
 
-Light Light::createDirectionalLight(const Vector3& direction, const Vector3& color, float intensity) {
-    Light light;
-    light.type = Type::DIRECTIONAL;
-    light.direction = direction.normalize();
-    light.color = color;
-    light.intensity = intensity;
-    return light;
-}
+    // Diffuse
+    float diffFactor = std::max(N.dot(L), 0.0f);
+    Color diffuseC = diffuse * material.kDiffuse * diffFactor;
 
-Light Light::createPointLight(const Vector3& position, const Vector3& color, float intensity) {
-    Light light;
-    light.type = Type::POINT;
-    light.position = position;
-    light.color = color;
-    light.intensity = intensity;
-    light.constantAttenuation = 1.0f;
-    light.linearAttenuation = 0.09f;
-    light.quadraticAttenuation = 0.032f;
-    return light;
-}
+    // Specular
+    float specFactor = std::pow(std::max(R.dot(V), 0.0f), material.shininess);
+    Color specularC = specular * material.kSpecular * specFactor;
 
-float Light::calculateAttenuation(float distance) const {
-    if (type == Type::DIRECTIONAL) {
-        return 1.0f; // No attenuation for directional lights
-    }
-    
-    return 1.0f / (constantAttenuation + 
-                   linearAttenuation * distance + 
-                   quadraticAttenuation * distance * distance);
+    return ambientC + diffuseC + specularC;
 }

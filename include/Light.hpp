@@ -1,33 +1,22 @@
 #pragma once
 #include "Vector3.hpp"
+#include "Color.hpp"
+#include "Material.hpp"
 
 class Light {
 public:
-    enum class Type {
-        DIRECTIONAL,
-        POINT
-    };
+    Vector3 position;    // For point light
+    Vector3 direction;   // For directional light
+    Color ambient;       // Ambient light color/intensity
+    Color diffuse;       // Diffuse light color/intensity
+    Color specular;      // Specular light color/intensity
 
-    // Light properties
-    Type type;
-    Vector3 position;     // For point lights
-    Vector3 direction;    // For directional lights (normalized)
-    Vector3 color;        // RGB values (0.0 - 1.0)
-    float intensity;
-    
-    // Attenuation properties (for point lights)
-    float constantAttenuation;
-    float linearAttenuation;
-    float quadraticAttenuation;
-
-    // Constructors
     Light();
-    Light(Type lightType, const Vector3& pos, const Vector3& dir, const Vector3& col, float intens);
+    Light(const Vector3& pos, const Vector3& dir,
+          const Color& amb, const Color& diff, const Color& spec);
 
-    // Factory methods for easy creation
-    static Light createDirectionalLight(const Vector3& direction, const Vector3& color, float intensity = 1.0f);
-    static Light createPointLight(const Vector3& position, const Vector3& color, float intensity = 1.0f);
-
-    // Calculate attenuation for point lights
-    float calculateAttenuation(float distance) const;
+    // Compute vertex color for Gouraud shading
+    Color computeColor(const Vector3& normal,
+                       const Vector3& viewDir,
+                       const Material& material) const;
 };

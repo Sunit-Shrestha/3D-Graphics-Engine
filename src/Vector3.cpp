@@ -35,7 +35,7 @@ float Vector3::length() const {
     return std::sqrt(x * x + y * y + z * z);
 }
 
-Vector3 Vector3::normalize() const {
+Vector3 Vector3::normalized() const {
     float len = length();
     if (len > 0.0f) {
         return *this / len;

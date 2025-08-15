@@ -15,5 +15,5 @@ Vector3 Triangle::normal() const {
     Vector3 normal = edge1.cross(edge2);
     
     // Normalize the normal vector to unit length
-    return normal.normalize();
+    return normal.normalized();
 }
