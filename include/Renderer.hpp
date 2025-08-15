@@ -26,7 +26,7 @@ public:
     ~Renderer();
 
     void clear(const Color& clearColor = Color(0, 0, 0));
-    void render(const std::vector<Mesh>& meshes, const Camera& camera);
+    void render_Mesh(const std::vector<Mesh>& meshes, const Camera& camera);
     void present(sf::RenderWindow& window);
 
 private:

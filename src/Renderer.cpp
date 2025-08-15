@@ -31,7 +31,7 @@ void Renderer::clear(const Color& clearColor) {
     std::fill(zBuffer.begin(), zBuffer.end(), std::numeric_limits<float>::max());
 }
 
-void Renderer::render(const std::vector<Mesh>& meshes, const Camera& camera) {
+void Renderer::render_Mesh(const std::vector<Mesh>& meshes, const Camera& camera) {
     // Get combined view-projection matrix
     Matrix4 viewProjMatrix = camera.getViewProjectionMatrix();
     

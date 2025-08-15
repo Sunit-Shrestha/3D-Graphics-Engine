@@ -105,7 +105,7 @@ int main() {
     renderer.clear(Color(20, 20, 40)); // Dark blue background
     
     // Render scene
-    renderer.render(meshes, camera);
+    renderer.render_Mesh(meshes, camera);
     
     // Present to window
     window.clear();
