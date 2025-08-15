@@ -1,4 +1,6 @@
 #include "Renderer.hpp"
+// #include "Light.hpp"
+#include "Material.hpp"
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <limits>
@@ -131,6 +133,85 @@ void Renderer::render_Mesh(const std::vector<Mesh>& meshes, const Camera& camera
     if (firstRender) {
         printf("Renderer: Successfully processed %zu meshes\n", meshes.size());
         firstRender = false;
+    }
+}
+
+void Renderer::render_Light(const std::vector<Mesh>& meshes, const Camera& camera, 
+                           const std::vector<Light>& lights, const Material& material) {
+    // Get combined view-projection matrix
+    Matrix4 viewProjMatrix = camera.getViewProjectionMatrix();
+    
+    // Render each mesh with Gouraud shading
+    for (size_t meshIndex = 0; meshIndex < meshes.size(); ++meshIndex) {
+        const Mesh& mesh = meshes[meshIndex];
+        
+        // Get mesh transformation matrix
+        Matrix4 worldMatrix = mesh.getWorldTransformMatrix();
+        Matrix4 mvpMatrix = viewProjMatrix * worldMatrix;
+        
+        // Render triangles with Gouraud lighting (no edges)
+        for (size_t i = 0; i < mesh.getTriangleCount(); ++i) {
+            Triangle triangle = mesh.getTriangle(i);
+            
+            // Transform vertices to clip space
+            Vector3 v0_clip = mvpMatrix.multiply(triangle.v0.position);
+            Vector3 v1_clip = mvpMatrix.multiply(triangle.v1.position);
+            Vector3 v2_clip = mvpMatrix.multiply(triangle.v2.position);
+            
+            // Perspective division (clip space to NDC)
+            if (v0_clip.z <= 0.0f || v1_clip.z <= 0.0f || v2_clip.z <= 0.0f) continue; // Behind camera
+            
+            Vector3 v0_ndc = Vector3(v0_clip.x / v0_clip.z, v0_clip.y / v0_clip.z, v0_clip.z);
+            Vector3 v1_ndc = Vector3(v1_clip.x / v1_clip.z, v1_clip.y / v1_clip.z, v1_clip.z);
+            Vector3 v2_ndc = Vector3(v2_clip.x / v2_clip.z, v2_clip.y / v2_clip.z, v2_clip.z);
+            
+            // Simple clipping: skip triangles that are completely outside the view volume
+            if (v0_ndc.x < -1.0f && v1_ndc.x < -1.0f && v2_ndc.x < -1.0f) continue; // Left of screen
+            if (v0_ndc.x > 1.0f && v1_ndc.x > 1.0f && v2_ndc.x > 1.0f) continue;   // Right of screen
+            if (v0_ndc.y < -1.0f && v1_ndc.y < -1.0f && v2_ndc.y < -1.0f) continue; // Below screen
+            if (v0_ndc.y > 1.0f && v1_ndc.y > 1.0f && v2_ndc.y > 1.0f) continue;   // Above screen
+            
+            // Transform to screen coordinates
+            Vector3 v0_screen = viewportTransform(v0_ndc);
+            Vector3 v1_screen = viewportTransform(v1_ndc);
+            Vector3 v2_screen = viewportTransform(v2_ndc);
+            
+            // Check if triangle is visible on screen
+            if (!isTriangleVisible(v0_screen, v1_screen, v2_screen)) {
+                continue;
+            }
+            
+            // Back-face culling
+            if (!isBackFace(v0_screen, v1_screen, v2_screen)) {
+                continue;
+            }
+            
+            // Calculate world space positions for lighting
+            Vector3 v0_world = worldMatrix.multiply(triangle.v0.position);
+            Vector3 v1_world = worldMatrix.multiply(triangle.v1.position);
+            Vector3 v2_world = worldMatrix.multiply(triangle.v2.position);
+            
+            // Calculate face normal for this triangle
+            Vector3 faceNormal = calculateFaceNormal(v0_world, v1_world, v2_world);
+            
+            // Get camera position for view direction calculation
+            Vector3 viewPos = camera.position;
+            
+            // Calculate Gouraud lighting at each vertex using Light's computeColor method
+            Color c0 = computeVertexLighting(v0_world, faceNormal, viewPos, lights, material);
+            Color c1 = computeVertexLighting(v1_world, faceNormal, viewPos, lights, material);
+            Color c2 = computeVertexLighting(v2_world, faceNormal, viewPos, lights, material);
+            
+            // Rasterize triangle with interpolated colors (Gouraud shading)
+            fillTriangle_Gouraud(v0_screen, v1_screen, v2_screen, c0, c1, c2);
+        }
+    }
+    
+    // Simple completion message for first render only
+    static bool firstLightRender = true;
+    if (firstLightRender) {
+        printf("Renderer: Successfully processed %zu meshes with lighting\n", meshes.size());
+        firstLightRender = false;
     }
 }
 
@@ -370,4 +451,75 @@ bool Renderer::depthTest(int x, int y, float depth) {
         return true;
     }
     return false;
+}
+
+// Calculate face normal from three vertices
+Vector3 Renderer::calculateFaceNormal(const Vector3& v0, const Vector3& v1, const Vector3& v2) {
+    Vector3 edge1 = v1 - v0;
+    Vector3 edge2 = v2 - v0;
+    return edge1.cross(edge2).normalized();
+}
+
+// Compute vertex lighting using Light's computeColor method
+Color Renderer::computeVertexLighting(const Vector3& worldPos, const Vector3& normal, 
+                                     const Vector3& viewPos, const std::vector<Light>& lights, 
+                                     const Material& material) {
+    Color finalColor(0, 0, 0);
+    Vector3 viewDir = (viewPos - worldPos).normalized();
+    
+    // Accumulate lighting from all lights using each Light's computeColor method
+    for (const Light& light : lights) {
+        Color lightContribution = light.computeColor(normal, viewDir, material);
+        finalColor = finalColor + lightContribution;
+    }
+    
+    return finalColor;
+}
+
+// Gouraud shaded triangle rasterization with color interpolation
+void Renderer::fillTriangle_Gouraud(const Vector3& v0, const Vector3& v1, const Vector3& v2, 
+                                   const Color& c0, const Color& c1, const Color& c2) {
+    // Convert to integer coordinates
+    int x0 = static_cast<int>(v0.x), y0 = static_cast<int>(v0.y);
+    int x1 = static_cast<int>(v1.x), y1 = static_cast<int>(v1.y);
+    int x2 = static_cast<int>(v2.x), y2 = static_cast<int>(v2.y);
+    
+    // Find bounding box
+    int minX = std::max(0, std::min({x0, x1, x2}));
+    int maxX = std::min(screenWidth - 1, std::max({x0, x1, x2}));
+    int minY = std::max(0, std::min({y0, y1, y2}));
+    int maxY = std::min(screenHeight - 1, std::max({y0, y1, y2}));
+    
+    // Precompute triangle area for barycentric coordinates
+    float area = static_cast<float>((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0));
+    if (std::abs(area) < 0.001f) return; // Degenerate triangle
+    
+    // Scanline fill with barycentric interpolation
+    for (int y = minY; y <= maxY; ++y) {
+        for (int x = minX; x <= maxX; ++x) {
+            // Calculate barycentric coordinates
+            float w0 = static_cast<float>((x1 - x) * (y2 - y) - (x2 - x) * (y1 - y)) / area;
+            float w1 = static_cast<float>((x2 - x) * (y0 - y) - (x0 - x) * (y2 - y)) / area;
+            float w2 = 1.0f - w0 - w1;
+            
+            // Check if point is inside triangle
+            if (w0 >= 0.0f && w1 >= 0.0f && w2 >= 0.0f) {
+                // Interpolate depth
+                float depth = w0 * v0.z + w1 * v1.z + w2 * v2.z;
+                
+                // Depth test
+                if (depthTest(x, y, depth)) {
+                    // Interpolate color using barycentric coordinates
+                    unsigned char r = static_cast<unsigned char>(
+                        std::min(255.0f, w0 * c0.r + w1 * c1.r + w2 * c2.r));
+                    unsigned char g = static_cast<unsigned char>(
+                        std::min(255.0f, w0 * c0.g + w1 * c1.g + w2 * c2.g));
+                    unsigned char b = static_cast<unsigned char>(
+                        std::min(255.0f, w0 * c0.b + w1 * c1.b + w2 * c2.b));
+                    
+                    setPixel(x, y, Color(r, g, b));
+                }
+            }
+        }
+    }
 }

@@ -4,6 +4,8 @@
 #include "Camera.hpp"
 #include "Vector3.hpp"
 #include "Color.hpp"
+#include "Light.hpp"
+#include "Material.hpp"
 
 // Forward declaration for minimal SFML usage
 namespace sf {
@@ -21,6 +23,8 @@ public:
 
     void clear(const Color& clearColor = Color(0, 0, 0));
     void render_Mesh(const std::vector<Mesh>& meshes, const Camera& camera);
+    void render_Light(const std::vector<Mesh>& meshes, const Camera& camera, 
+                      const std::vector<Light>& lights, const Material& material);
     void present(sf::RenderWindow& window);
 
 private:
@@ -31,6 +35,14 @@ private:
     void drawLine_Bresenham(int x0, int y0, int x1, int y1, const Color& color);
     void drawLine_Bresenham_Depth(int x0, int y0, int x1, int y1, float z0, float z1, const Color& color);
     void fillTriangle_Scanline(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color);
+    void fillTriangle_Gouraud(const Vector3& v0, const Vector3& v1, const Vector3& v2, 
+                              const Color& c0, const Color& c1, const Color& c2);
+    
+    // Lighting helpers
+    Vector3 calculateFaceNormal(const Vector3& v0, const Vector3& v1, const Vector3& v2);
+    Color computeVertexLighting(const Vector3& worldPos, const Vector3& normal, 
+                                const Vector3& viewPos, const std::vector<Light>& lights, 
+                                const Material& material);
     
     // Pixel operations
     void setPixel(int x, int y, const Color& color);

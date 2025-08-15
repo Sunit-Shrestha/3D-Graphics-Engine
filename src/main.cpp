@@ -4,6 +4,8 @@
 #include "Mesh.hpp"
 #include "Camera.hpp"
 #include "Renderer.hpp"
+#include "Light.hpp"
+#include "Material.hpp"
 
 using namespace std;
 
@@ -49,11 +51,55 @@ int main() {
     return -1;
   }
 
+  // Create lighting setup for Gouraud shading
+  std::vector<Light> lights;
+ 
+  // // Add a main directional light from the front-top-right
+  Light mainLight(
+    Vector3(0, 0, 0),                           // position not used for directional light
+    Vector3(-0.7f, 0.8f, -1.0f).normalized(),   // direction from top-left toward cube
+    Color(40, 40, 40),                          // ambient
+    Color(200, 200, 180),                       // bright warm diffuse
+    Color(180, 180, 180)                        // slightly reduced specular to avoid harsh spot
+  );
+  lights.push_back(mainLight);
+  
+  // Add a fill light from the left to illuminate shadowed areas
+  Light fillLight(
+    Vector3(0, 0, 0),                           // position (not used for directional)
+    Vector3(1.0f, 0.2f, -0.5f).normalized(),   // direction from left side
+    Color(20, 20, 20),                          // low ambient
+    Color(80, 80, 120),                         // softer cool diffuse for fill
+    Color(100, 100, 100)                        // lower specular
+  );
+  lights.push_back(fillLight);
+  
+  // Add a rim light from behind to separate the cube from background
+  Light rimLight(
+    Vector3(0, 0, 0),                           // position (not used for directional)
+    Vector3(0.2f, 0.5f, 1.0f).normalized(),    // direction from behind
+    Color(10, 10, 10),                          // minimal ambient
+    Color(60, 70, 80),                          // subtle cool diffuse
+    Color(150, 150, 150)                        // moderate specular
+  );
+  lights.push_back(rimLight);
+  
+  // Create material for the cube with higher ambient for better visibility
+  Material cubeMaterial(
+    0.4f,   // higher ambient coefficient for minimum lighting
+    0.7f,   // diffuse coefficient
+    0.3f,   // specular coefficient
+    32.0f   // shininess
+  );
+  
+  cout << "✓ Lighting setup: " << lights.size() << " lights created (main + fill + rim)" << endl;
+
   cout << "\nControls:" << endl;
   cout << "- Close window or ESC: Exit" << endl;
   cout << "- Arrow Keys: Rotate cube" << endl;
   cout << "  ↑/↓: Rotate around X-axis" << endl;
   cout << "  ←/→: Rotate around Y-axis" << endl;
+  cout << "- SPACE: Toggle between Mesh and Lighting rendering" << endl;
   cout << "\nStarting render loop..." << endl;
 
   // Manual rotation control variables
@@ -62,6 +108,7 @@ int main() {
   float rotationZ = 0.0f;
   const float rotationSpeed = 0.05f; // Rotation increment per key press
   sf::Clock clock; // For frame timing
+  bool useLighting = true; // Start with lighting rendering
 
   // Main render loop - continues until window is closed
   while (window.isOpen()) {
@@ -75,6 +122,11 @@ int main() {
         if (keyPressed->scancode == sf::Keyboard::Scancode::Escape) {
           cout << "ESC key pressed - exiting." << endl;
           window.close();
+        }
+        // Toggle between mesh and lighting rendering
+        else if (keyPressed->scancode == sf::Keyboard::Scancode::Space) {
+          useLighting = !useLighting;
+          cout << "Switched to " << (useLighting ? "Lighting" : "Mesh") << " rendering" << endl;
         }
         // Arrow key controls for cube rotation
         else if (keyPressed->scancode == sf::Keyboard::Scancode::Up) {
@@ -104,8 +156,12 @@ int main() {
     // Clear renderer
     renderer.clear(Color(20, 20, 40)); // Dark blue background
     
-    // Render scene
-    renderer.render_Mesh(meshes, camera);
+    // Render scene with either lighting or mesh rendering
+    if (useLighting) {
+      renderer.render_Light(meshes, camera, lights, cubeMaterial);
+    } else {
+      renderer.render_Mesh(meshes, camera);
+    }
     
     // Present to window
     window.clear();
