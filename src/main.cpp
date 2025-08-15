@@ -96,9 +96,11 @@ int main() {
 
   cout << "\nControls:" << endl;
   cout << "- Close window or ESC: Exit" << endl;
-  cout << "- Arrow Keys: Rotate cube" << endl;
-  cout << "  ↑/↓: Rotate around X-axis" << endl;
-  cout << "  ←/→: Rotate around Y-axis" << endl;
+  cout << "- Arrow Keys: Move camera position" << endl;
+  cout << "  ↑/↓: Move camera forward/backward" << endl;
+  cout << "  ←/→: Move camera left/right" << endl;
+  cout << "- H/L: Rotate cube around Y-axis (left/right)" << endl;
+  cout << "- J/K: Rotate cube around X-axis (down/up)" << endl;
   cout << "- SPACE: Toggle between Mesh and Lighting rendering" << endl;
   cout << "\nStarting render loop..." << endl;
 
@@ -106,7 +108,11 @@ int main() {
   float rotationX = 0.0f;
   float rotationY = 0.0f;
   float rotationZ = 0.0f;
+  float positionX = 0.0f;
+  float positionY = 0.0f;
+  float positionZ = -5.0f;
   const float rotationSpeed = 0.05f; // Rotation increment per key press
+  const float movementSpeed = 0.2f; // Camera movement speed
   sf::Clock clock; // For frame timing
   bool useLighting = true; // Start with lighting rendering
 
@@ -128,22 +134,44 @@ int main() {
           useLighting = !useLighting;
           cout << "Switched to " << (useLighting ? "Lighting" : "Mesh") << " rendering" << endl;
         }
-        // Arrow key controls for cube rotation
+        // Arrow key controls for camera movement
         else if (keyPressed->scancode == sf::Keyboard::Scancode::Up) {
-          rotationX -= rotationSpeed; // Rotate up (negative X rotation)
-          cout << "Rotate up - X: " << rotationX << endl;
+          // camera.position.z -= cameraSpeed; // Move forward
+          positionY -= movementSpeed;
+          cout << "Camera forward - Z: " << camera.position.z << endl;
         }
         else if (keyPressed->scancode == sf::Keyboard::Scancode::Down) {
-          rotationX += rotationSpeed; // Rotate down (positive X rotation)
-          cout << "Rotate down - X: " << rotationX << endl;
+          // camera.position.z += cameraSpeed; // Move backward
+          positionY += movementSpeed;
+          cout << "Camera backward - Z: " << camera.position.z << endl;
         }
         else if (keyPressed->scancode == sf::Keyboard::Scancode::Left) {
-          rotationY -= rotationSpeed; // Rotate left (negative Y rotation)
-          cout << "Rotate left - Y: " << rotationY << endl;
+          // camera.position.x -= cameraSpeed; // Move left
+          positionX -= movementSpeed;
+          cout << "Camera left - X: " << camera.position.x << endl;
         }
         else if (keyPressed->scancode == sf::Keyboard::Scancode::Right) {
-          rotationY += rotationSpeed; // Rotate right (positive Y rotation)
-          cout << "Rotate right - Y: " << rotationY << endl;
+          // camera.position.x += cameraSpeed; // Move right
+          positionX += movementSpeed;
+          cout << "Camera right - X: " << camera.position.x << endl;
+        }
+        // H/L keys for cube rotation around Y-axis
+        else if (keyPressed->scancode == sf::Keyboard::Scancode::H) {
+          rotationY -= rotationSpeed; // Rotate left around Y-axis
+          cout << "Cube rotate left - Y: " << rotationY << endl;
+        }
+        else if (keyPressed->scancode == sf::Keyboard::Scancode::L) {
+          rotationY += rotationSpeed; // Rotate right around Y-axis
+          cout << "Cube rotate right - Y: " << rotationY << endl;
+        }
+        // J/K keys for cube rotation around X-axis
+        else if (keyPressed->scancode == sf::Keyboard::Scancode::K) {
+          rotationX += rotationSpeed; // Rotate down around X-axis
+          cout << "Cube rotate down - X: " << rotationX << endl;
+        }
+        else if (keyPressed->scancode == sf::Keyboard::Scancode::J) {
+          rotationX -= rotationSpeed; // Rotate up around X-axis
+          cout << "Cube rotate up - X: " << rotationX << endl;
         }
       }
     }
@@ -151,6 +179,7 @@ int main() {
     // Apply user-controlled rotation to the cube
     for (Mesh& mesh : meshes) {
       mesh.setWorldRotation(rotationX, rotationY, rotationZ);
+      mesh.setWorldPosition(positionX, positionY, positionZ);
     }
 
     // Clear renderer
