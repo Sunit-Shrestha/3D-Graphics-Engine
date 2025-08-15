@@ -35,6 +35,7 @@ private:
 
     // Rasterization helpers
     void drawLine_Bresenham(int x0, int y0, int x1, int y1, const Color& color);
+    void drawLine_Bresenham_Depth(int x0, int y0, int x1, int y1, float z0, float z1, const Color& color);
     void fillTriangle_Scanline(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color);
     
     // Pixel operations

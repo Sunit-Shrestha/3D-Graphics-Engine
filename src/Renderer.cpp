@@ -16,19 +16,11 @@ Renderer::Renderer(int width, int height)
     // Initialize minimal SFML objects for display
     displayImage = new sf::Image(sf::Vector2u(screenWidth, screenHeight), sf::Color::Black);
     
-    displayTexture = new sf::Texture();
-    if (!displayTexture->resize(sf::Vector2u(screenWidth, screenHeight))) {
-        printf("ERROR: Failed to resize texture to %dx%d\n", screenWidth, screenHeight);
-    }
-    displaySprite = new sf::Sprite(*displayTexture);
-    
     printf("Renderer initialized: %dx%d\n", screenWidth, screenHeight);
 }
 
 Renderer::~Renderer() {
     delete displayImage;
-    delete displayTexture;
-    delete displaySprite;
 }
 
 void Renderer::clear(const Color& clearColor) {
@@ -58,11 +50,14 @@ void Renderer::render(const std::vector<Mesh>& meshes, const Camera& camera) {
         const Mesh& mesh = meshes[meshIndex];
         Color meshColor = meshColors[meshIndex % 6]; // Cycle through colors
         
-        // Get model-view-projection matrix
-        Matrix4 modelMatrix = mesh.getWorldTransformMatrix();
-        Matrix4 mvpMatrix = viewProjMatrix * modelMatrix;
+        // Get mesh transformation matrix
+        Matrix4 worldMatrix = mesh.getWorldTransformMatrix();
+        Matrix4 mvpMatrix = viewProjMatrix * worldMatrix;
         
-        // Render each triangle in the mesh
+        // Store visible triangles for edge rendering
+        std::vector<std::tuple<Vector3, Vector3, Vector3>> visibleTriangles;
+        
+        // First pass: Render triangle fills
         for (size_t i = 0; i < mesh.getTriangleCount(); ++i) {
             Triangle triangle = mesh.getTriangle(i);
             
@@ -72,7 +67,6 @@ void Renderer::render(const std::vector<Mesh>& meshes, const Camera& camera) {
             Vector3 v2_clip = mvpMatrix.multiply(triangle.v2.position);
             
             // Perspective division (clip space to NDC)
-            // Assuming w = z for perspective projection
             if (v0_clip.z <= 0.0f || v1_clip.z <= 0.0f || v2_clip.z <= 0.0f) continue; // Behind camera
             
             Vector3 v0_ndc = Vector3(v0_clip.x / v0_clip.z, v0_clip.y / v0_clip.z, v0_clip.z);
@@ -96,12 +90,39 @@ void Renderer::render(const std::vector<Mesh>& meshes, const Camera& camera) {
             }
             
             // Back-face culling
-            if (isBackFace(v0_screen, v1_screen, v2_screen)) {
+            if (!isBackFace(v0_screen, v1_screen, v2_screen)) {
                 continue;
             }
             
-            // Rasterize triangle
+            // Rasterize triangle fill
             fillTriangle_Scanline(v0_screen, v1_screen, v2_screen, meshColor);
+            
+            // Store triangle for edge rendering (with slightly closer z for priority)
+            Vector3 v0_edge = Vector3(v0_screen.x, v0_screen.y, v0_screen.z - 0.001f);
+            Vector3 v1_edge = Vector3(v1_screen.x, v1_screen.y, v1_screen.z - 0.001f);
+            Vector3 v2_edge = Vector3(v2_screen.x, v2_screen.y, v2_screen.z - 0.001f);
+            visibleTriangles.push_back(std::make_tuple(v0_edge, v1_edge, v2_edge));
+        }
+        
+        // Second pass: Render triangle edges on top
+        Color edgeColor = Color(255, 255, 255); // White edges
+        for (const auto& triangle : visibleTriangles) {
+            Vector3 v0 = std::get<0>(triangle);
+            Vector3 v1 = std::get<1>(triangle);
+            Vector3 v2 = std::get<2>(triangle);
+            
+            // Draw the three edges of the triangle
+            drawLine_Bresenham_Depth(static_cast<int>(v0.x), static_cast<int>(v0.y), 
+                                    static_cast<int>(v1.x), static_cast<int>(v1.y), 
+                                    v0.z, v1.z, edgeColor);
+                              
+            drawLine_Bresenham_Depth(static_cast<int>(v1.x), static_cast<int>(v1.y), 
+                                    static_cast<int>(v2.x), static_cast<int>(v2.y), 
+                                    v1.z, v2.z, edgeColor);
+                              
+            drawLine_Bresenham_Depth(static_cast<int>(v2.x), static_cast<int>(v2.y), 
+                                    static_cast<int>(v0.x), static_cast<int>(v0.y), 
+                                    v2.z, v0.z, edgeColor);
         }
     }
     
@@ -181,6 +202,57 @@ void Renderer::drawLine_Bresenham(int x0, int y0, int x1, int y1, const Color& c
     }
 }
 
+// Depth-aware Bresenham line drawing algorithm with clipping
+void Renderer::drawLine_Bresenham_Depth(int x0, int y0, int x1, int y1, float z0, float z1, const Color& color) {
+    // Simple line clipping to screen bounds
+    if ((x0 < 0 && x1 < 0) || (x0 >= screenWidth && x1 >= screenWidth) ||
+        (y0 < 0 && y1 < 0) || (y0 >= screenHeight && y1 >= screenHeight)) {
+        return; // Line completely outside screen
+    }
+    
+    int dx = abs(x1 - x0);
+    int dy = abs(y1 - y0);
+    int sx = x0 < x1 ? 1 : -1;
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx - dy;
+    
+    int x = x0;
+    int y = y0;
+    
+    // Calculate total line length for depth interpolation
+    float lineLength = std::sqrt(static_cast<float>(dx * dx + dy * dy));
+    
+    while (true) {
+        // Only draw if pixel is within screen bounds
+        if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
+            // Interpolate depth along the line
+            float t = 0.0f;
+            if (lineLength > 0.0f) {
+                float currentLength = std::sqrt(static_cast<float>((x - x0) * (x - x0) + (y - y0) * (y - y0)));
+                t = currentLength / lineLength;
+            }
+            float z = z0 + t * (z1 - z0);
+            
+            // Use depth test before setting pixel
+            if (depthTest(x, y, z)) {
+                setPixel(x, y, color);
+            }
+        }
+        
+        if (x == x1 && y == y1) break;
+        
+        int e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y += sy;
+        }
+    }
+}
+
 // Scanline triangle filling algorithm
 void Renderer::fillTriangle_Scanline(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color) {
     // Sort vertices by Y coordinate
@@ -244,16 +316,14 @@ void Renderer::fillTriangle_Scanline(const Vector3& v0, const Vector3& v1, const
         int startX = static_cast<int>(std::ceil(p1.x));
         int endX = static_cast<int>(p2.x);
         
-        for (int x = startX; x <= endX; ++x) {
-            if (x >= 0 && x < screenWidth) {
-                // Interpolate depth
-                float t = (p2.x == p1.x) ? 0.0f : (x - p1.x) / (p2.x - p1.x);
-                float depth = p1.z + t * (p2.z - p1.z);
-                
-                // Depth test
-                if (depthTest(x, y, depth)) {
-                    setPixel(x, y, color);
-                }
+        for (int x = std::max(0, startX); x <= std::min(screenWidth - 1, endX); ++x) {
+            // Interpolate depth
+            float t = (p2.x == p1.x) ? 0.0f : (x - p1.x) / (p2.x - p1.x);
+            float depth = p1.z + t * (p2.z - p1.z);
+            
+            // Depth test
+            if (depthTest(x, y, depth)) {
+                setPixel(x, y, color);
             }
         }
     }
@@ -266,7 +336,7 @@ bool Renderer::isBackFace(const Vector3& v0, const Vector3& v1, const Vector3& v
     Vector3 edge2 = Vector3(v2.x - v0.x, v2.y - v0.y, 0);
     
     // Cross product Z component determines winding order
-    float normalZ = edge1.x * edge2.y - edge1.y * edge2.x;
+    float normalZ = edge1.cross(edge2).z;
     
     // Counter-clockwise winding is front-facing (positive Z)
     return normalZ <= 0;
